@@ -1,0 +1,26 @@
+// VerilogA for Lib, my_voltage_Doubler, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module my_voltage_Doubler(in, out);
+    inout in, out;
+    electrical in, out;
+
+    electrical gnd, n1;
+    ground gnd;
+    
+
+    parameter real C1 = 0.1u;
+    parameter real C2 = 1u;
+    parameter real Is = 1e-14;
+    
+    analog begin
+        I(in, n1) <+ C1 * ddt(V(in,n1));
+        I(gnd, n1) <+ Is * (limexp(V(gnd,n1)/$vt) - 1);
+        I(n1, out) <+ Is * (limexp(V(n1,out)/$vt) - 1);
+        I(out,gnd) <+ C2 * ddt(V(out,gnd));
+    end
+
+
+endmodule
