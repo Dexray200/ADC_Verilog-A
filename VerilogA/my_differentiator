@@ -1,0 +1,48 @@
+// VerilogA for Lib, my_differentiator, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module my_differentiator(in, out,vdd, vss);
+    input in;
+    inout vdd, vss;
+    output out;
+
+    electrical in, out, inp, inm, vdd, vss;
+    ground inp;
+
+    parameter real C1 = 1u;
+    parameter real C2 = 1u;
+    parameter real R2 = 10k;
+
+    parameter real GBW = 2.2M;
+    parameter real A = 10k;
+    parameter real SR = 1e6;
+
+    real vid, vout, wu, wd;
+    real num[1:0];
+    real den[1:0];
+
+    analog begin
+        @(initial_step) begin
+            wu = 2 * 3.1415 * GBW;
+            wd = wu/A;
+            num[0] = wu;
+            num[1] = 0;
+            den[0] = wd;
+            den[1] = 1;
+        end
+        vid = V(inp, inm);
+        vout = laplace_nd(vid, num, den);
+        vout = slew(vout, SR, SR);
+        if (vout > V(vdd)) vout = V(vdd);
+        else if (vout < V(vss)) vout = V(vss);
+    
+        I(in, inm) <+ C1 * ddt(V(in,inm));
+        I(inm,out) <+ V(inm,out)/R2;
+        I(inm,out) <+ C2 * ddt(V(inm,out));
+        
+        V(out) <+ vout;
+    end
+
+endmodule
