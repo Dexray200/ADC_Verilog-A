@@ -1,0 +1,56 @@
+// VerilogA for Lib, my_amux, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+`define     BUSWID     1
+`define     NUM        2
+
+
+module my_amux(in, out, sel, avdd, avss);
+    inout out, avdd, avss;
+    inout [`NUM-1:0] in; // 2 input mux
+    input sel; // 2 input mux needs 1 bit select
+
+    electrical out;
+    electrical [`NUM-1:0] in;
+    electrical sel, avdd, avss;
+    
+    parameter real Ron = 100;
+    parameter real Roff = 1G;
+    parameter real tpd = 0;
+    parameter real tr = 10n;
+    parameter real tf = 10n;
+    parameter real time_tol = 10n;
+
+    // Veriables 
+    integer logic_sel; // Don't really need for 2 input mux
+    //integer input_num;
+    real Vth;
+    real Rch[`NUM-1:0];
+
+    //integer weight;
+    integer i;
+
+    // Genvar for behavioral generated description
+    genvar j; // May not need for only 2 input mux since select is 1
+    
+    analog begin
+
+        for (i = 0; i <= `NUM-1; i = i + 1) begin
+            Rch[i] = Roff;
+        end
+
+        Vth = (V(avdd) + V(avss)) / 2.0;
+        @(initial_step or cross(V(sel) - Vth, 0, time_tol)) begin
+            logic_sel = V(sel) > Vth ? 1 : 0; // if then else
+        end
+
+        Rch[logic_sel] = Ron;
+
+        for (j = 0; j <= `NUM - 1; j = j + 1) begin
+            V(out, in[j]) <+ I(out, in[j]) * transition(Rch[j], tpd, tr, tf);
+        end
+    end
+
+endmodule
