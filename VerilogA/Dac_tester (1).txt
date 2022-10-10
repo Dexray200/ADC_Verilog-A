@@ -1,0 +1,50 @@
+// VerilogA for Lib, my_DAC_10bit_tb, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module my_DAC_Tester(Data, clk);
+	input clk;
+	output [9:0] Data;
+	electrical [9:0] Data;
+	electrical clk;
+
+	parameter real tpd = 0.0;
+	parameter real tr = 1n;
+	parameter real tf = 1n;
+	parameter real vth = 0;
+	parameter real time_tol = 10n;
+	real one, zero;
+	real vd[9:0];
+
+	integer lsb;
+	integer i, count;
+	genvar j;
+
+	analog begin
+		@(initial_step) begin
+			one = 3.3;
+			zero = 0;
+			count = 0;
+			lsb = one/(1<<10);	
+			for(i = 0; i <= 9; i = i+1) begin
+				vd[i] = 0;
+			end
+		end
+		@(cross(V(clk)-vth, -1, time_tol)) begin
+			vd[count] = one;
+			if(count == 9) begin
+				count = 0;
+				for(i = 0; i <= 9; i = i+1) begin
+					vd[i] = 0;
+				end
+			end
+			count = count + 1;
+		end
+
+		for(j = 0; j<=9; j = j+1) begin
+			V(Data[j]) <+ transition(vd[j],tpd, tr, tf);
+		end
+	end
+endmodule
+

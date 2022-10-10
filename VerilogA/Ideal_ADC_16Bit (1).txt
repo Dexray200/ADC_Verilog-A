@@ -1,0 +1,56 @@
+// VerilogA for Lib, Ideal_16Bit_ADC, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+`define N 16
+module Ideal_16Bit_ADC(vin, clk, avdd, avss, vref, data);
+	input vin, clk, avdd, avss, vref;
+	electrical vin, clk, avdd, avss, vref;
+
+	// Set resolution to N bits for the data output
+	output [`N-1:0] data;
+	electrical [`N-1:0] data;
+	
+
+	parameter real tpd = 0.5p from (0:inf);
+	parameter real tr = 1.0p from (0:inf);
+	parameter real tf = 1.0p from (0:inf);
+	parameter real time_tol = 10n from [0:inf);
+	parameter real voffset = 0;
+
+	real sample;
+	real vd[0:`N-1]; 
+	real vth;
+	real vdd;
+	real full_scale;
+	integer ii;
+
+	analog begin	
+		@(initial_step or initial_step("dc","ac","tran","xf")) begin
+			vth = (V(avdd) - V(avss)) /2.0;
+			vdd = V(avdd);
+			generate i(`N - 1, 0) begin //generate digital voltages and set to 0
+				vd[i] = 0;
+			end
+		end
+		@(cross(V(clk)-vth,1,time_tol))begin //at posedge of clk
+			full_scale = V(vref);
+			sample = abs(V(vin)); //Take a sample of input voltage in reference to vref
+			for ( ii = `N - 1; ii >=0; ii = ii - 1) begin
+				vd[ii] = 0;
+				if(sample > full_scale) begin
+					vd[ii] = 1;
+					sample = sample - full_scale;
+				end
+				else begin
+					vd[ii] = 0;
+				end
+				sample = sample * 2.0;
+			end
+		end
+
+		generate i(`N-1,0)begin
+			V(data[i]) <+ transition(vd[i]*vdd,tpd,tr,tf);
+		end
+	end
+endmodule

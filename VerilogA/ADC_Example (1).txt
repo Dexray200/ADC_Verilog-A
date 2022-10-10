@@ -1,0 +1,59 @@
+// VerilogA for Lib, my_ADC_example, veriloga
+`include "constants.vams"
+`include "disciplines.vams"
+
+// Number of ADC bits using N
+`define N 10
+// Default to 10 Bit
+
+module my_ADC_example(vin, clk, data);
+	input vin, clk;
+	electrical vin, clk;
+
+	// Set resolution to N bits for the data output
+	output [`N-1:0] data;
+	electrical [`N-1:0] data;
+	
+	parameter real vmax = 0.750;
+	parameter real vmin = 0.250;
+	parameter real one = 1.8;
+	parameter real zero = 0;
+	parameter real vth = 0;
+	parameter real slack = 0.5p from (0:inf);
+	parameter real tr = 1.0p from (0:inf);
+	parameter real tf = 1.0p from (0:inf);
+	parameter real tconv = 0.5p from [0:inf);
+	
+	real sample, vref, lsb, voffset;
+	real vd[0:`N-1];
+	integer ii;
+
+	analog begin	
+		@(initial_step or initial_step("dc","ac","tran","xf")) begin
+			vref = (vmax - vmin)/2.0; //0.25 V
+			lsb = (vmax - vmin)/(1<<`N); //Least Significant Bit 1024 Decimal
+			voffset = vmin; //0.25
+			generate i(`N - 1, 0) begin //generate digital voltages and set to 0
+				vd[i] = 0;
+			end
+		end
+		@(cross(V(clk)-vth,-1,slack, clk.potential.abstol))begin //at posedge of clk
+			sample = V(vin) - voffset;
+			for ( ii = `N - 1; ii >=0; ii = ii - 1) begin
+				vd[ii] = 0;
+				if(sample > vref) begin
+					vd[ii] = one;
+					sample = sample - vref;
+				end
+				else begin
+					vd[ii] = zero;
+				end
+				sample = sample * 2.0;
+			end
+		end
+
+		generate i(`N-1,0)begin
+			V(data[i]) <+ transition(vd[i],tconv,tr,tf);
+		end
+	end
+endmodule
