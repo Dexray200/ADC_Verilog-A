@@ -1,0 +1,45 @@
+// VerilogA for Lib, my_one_shot, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module my_one_shot(trig, outp);
+    input trig;
+    output outp;
+
+    electrical trig, outp;
+
+    parameter real A = 1;
+    parameter real pw = 1u;
+
+    real vth;
+    real TIME_TOL;
+    real vout;
+    real low;
+    real tpd, tf;
+
+    analog begin
+        @(initial_step) begin    
+            tpd = 0.0;
+            tf = 1n;
+            vth = 2.5;
+            TIME_TOL = 1n;
+            vout = 0.0;
+            low = -999;
+        end
+
+        @(cross(V(trig), -1, TIME_TOL, vth)) begin
+            low = $abstime + pw;
+            vout = A;
+        end
+        
+        @(timer(low)) begin
+            vout = 0.0;
+        end
+
+
+        V(outp) <+ transition(vout,tpd, tf, tf);
+    end
+    
+
+endmodule
